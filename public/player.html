@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Player Interativo</title>
+    <style>
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background: black; overflow: hidden; font-family: sans-serif;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* aqui define o video em tela cheia */
+        video { 
+            width: 100%; height: 100%; object-fit: contain; 
+        }
+
+        /* A barra de controles */
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 30px;
+            border-radius: 50px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            opacity: 0; /* Invisível por padrão */
+            transition: opacity 0.5s ease; /* Transição suave */
+            z-index: 10;
+        }
+
+        /* Botões */
+        button {
+            background: none; border: none; color: white;
+            font-size: 24px; cursor: pointer; opacity: 0.8;
+            transition: transform 0.2s;
+        }
+        button:hover { opacity: 1; transform: scale(1.1); }
+
+        /* Barra de progresso do vídeo */
+        #progress-container {
+            width: 200px; height: 5px; background: #555;
+            border-radius: 5px; overflow: hidden; position: relative;
+        }
+        #progress-bar {
+            height: 100%; width: 0%; background: #007bff;
+        }
+
+        /* Mensagem de carregamento */
+        #mensagem { 
+            color: white; position: absolute; top: 50%; left: 50%; 
+            transform: translate(-50%, -50%); display: none; 
+        }
+
+        /* Aqui esconde o cursor do mouse quando tiver passando video */
+        .esconder-cursor { cursor: none; }
+    </style>
+</head>
+<body class="esconder-cursor">
+
+    <div id="container">
+        <video id="tv" autoplay muted playsinline></video>
+        
+        <div id="controls">
+            <button onclick="videoAnterior()">⏮</button>
+            <button onclick="pausarPlay()" id="btnPlay">⏸</button>
+            <button onclick="proximoVideo()">⏭</button>
+            <div id="progress-container">
+                <div id="progress-bar"></div>
+            </div>
+            <span id="video-info" style="color:white; font-size: 12px;">00:00</span>
+        </div>
+
+        <h1 id="mensagem">A procurar vídeos...</h1>
+    </div>
+
+    <script>
+        const videoPlayer = document.getElementById('tv');
+        const controls = document.getElementById('controls');
+        const progressBar = document.getElementById('progress-bar');
+        const btnPlay = document.getElementById('btnPlay');
+        const videoInfo = document.getElementById('video-info');
+        
+        let playlist = [];
+        let indiceAtual = 0;
+        let mouseTimer = null;
+
+        // --- AQUI MOSTRA O PLAYER QUANDO MEXE O MOUSE ---
+
+        document.body.addEventListener('mousemove', () => {
+            
+            controls.style.opacity = '1';
+            document.body.classList.remove('esconder-cursor');
+
+           
+            clearTimeout(mouseTimer);
+
+            
+            mouseTimer = setTimeout(() => {
+                controls.style.opacity = '0';
+                document.body.classList.add('esconder-cursor');
+            }, 3000);
+        });
+
+        // ---  TODA PARTE DOPLAYER ---
+
+        async function carregarPlaylist() {
+            try {
+                const resposta = await fetch('/api/playlist');
+                const dados = await resposta.json();
+                
+                if (dados.playlist && dados.playlist.length > 0) {
+                    const novaLista = JSON.stringify(dados.playlist);
+                    // Só atualiza se a lista mudae
+                    if (novaLista !== JSON.stringify(playlist)) {
+                        playlist = dados.playlist;
+                        if (videoPlayer.paused && videoPlayer.currentTime === 0) {
+                            indiceAtual = 0;
+                            tocarVideo();
+                        }
+                    }
+                }
+            } catch (erro) { console.error("Erro na API", erro); }
+        }
+
+        function tocarVideo() {
+            if (playlist.length === 0) return;
+            
+            const videoSrc = playlist[indiceAtual];
+            videoPlayer.src = videoSrc;
+            
+            videoPlayer.play()
+                .then(() => btnPlay.textContent = "⏸")
+                .catch(e => {
+                    console.log("Autoplay bloqueado pelo navegador", e);
+                    btnPlay.textContent = "▶";
+                });
+        }
+
+        // Botões de proximo, anterior, pausar, etc (NAO APAGAR)
+        function proximoVideo() {
+            indiceAtual++;
+            if (indiceAtual >= playlist.length) indiceAtual = 0;
+            tocarVideo();
+        }
+
+        function videoAnterior() {
+            indiceAtual--;
+            if (indiceAtual < 0) indiceAtual = playlist.length - 1;
+            tocarVideo();
+        }
+
+        function pausarPlay() {
+            if (videoPlayer.paused) {
+                videoPlayer.play();
+                btnPlay.textContent = "⏸";
+            } else {
+                videoPlayer.pause();
+                btnPlay.textContent = "▶";
+            }
+        }
+
+        // aqui eu atualizo a barra de progresso do video
+        videoPlayer.ontimeupdate = () => {
+            if (videoPlayer.duration) {
+                const pct = (videoPlayer.currentTime / videoPlayer.duration) * 100;
+                progressBar.style.width = pct + '%';
+                
+                ///AQUI EU MOSTRO O TEMPO DO VIDEO
+                const min = Math.floor(videoPlayer.currentTime / 60);
+                const sec = Math.floor(videoPlayer.currentTime % 60).toString().padStart(2, '0');
+                videoInfo.textContent = `${min}:${sec}`;
+            }
+        };
+
+        // Quando o vídeo acaba, vai para o próximo automaticamente (NAO APAGAR)
+        videoPlayer.onended = () => {
+            proximoVideo();
+        };
+
+        // Inicia tudo
+        setInterval(carregarPlaylist, 20000); // Checa novos vídeos a cada 20s
+        carregarPlaylist();
+    </script>
+</body>
+</html>

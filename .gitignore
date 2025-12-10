@@ -1,0 +1,55 @@
+# Arquivos e pastas que não precisam ir para o repositório
+
+# Dependências
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Dados de runtime
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Cache e relatórios de cobertura
+coverage/
+.nyc_output/
+.eslintcache
+.parcel-cache/
+.cache/
+
+# Build/artefatos
+dist/
+build/
+
+# Arquivos temporários
+.tmp/
+temp/
+*.tmp
+
+# Arquivos de ambiente (segredos)
+.env
+.env.*
+.env.local
+
+# Configurações de editor/IDE
+.vscode/
+.idea/
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
+
+# Chaves/Certificados
+*.pem
+*.key
+
+# Opcional: ignore vídeos locais grandes
+# Descomente a linha abaixo se não quiser enviar os vídeos
+# public/videos/
