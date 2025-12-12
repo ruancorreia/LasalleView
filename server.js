@@ -25,11 +25,10 @@ app.use(
   })
 );
 
-app.use(express.static("public"));
+app.use(express.static("public", { extensions: ['html', 'htm'] }));
 
 // --- AUTENTICAÇÃO ---
 
-// AJUSTE CRÍTICO 2: Mudado para /api/login para bater com o HTML
 app.post("/api/login", (req, res) => {
   const { username, password } = req.body;
 
