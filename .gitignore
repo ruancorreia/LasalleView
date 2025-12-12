@@ -50,6 +50,3 @@ Thumbs.db
 *.pem
 *.key
 
-# Opcional: ignore vídeos locais grandes
-# Descomente a linha abaixo se não quiser enviar os vídeos
-# public/videos/
