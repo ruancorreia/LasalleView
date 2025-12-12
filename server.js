@@ -49,7 +49,7 @@ app.get("/logout", (req, res) => {
   res.redirect("/login.html");
 });
 
-// Configuração do Multer (é a ferramenta que faz o upload do video)
+// Configuração do Multer (é a ferramenta que faz o upload do video não mexer nessa desgraça)
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const dir = "public/videos";
