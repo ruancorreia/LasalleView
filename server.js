@@ -4,14 +4,50 @@ const path = require("path");
 const cors = require("cors");
 const multer = require("multer");
 const bodyParser = require("body-parser"); // o body parser tem que ser antes do express senao da merda
+const session = require("express-session");
 
 const app = express();
 const PORT = 3000;
 
 // --- CONFIGURAÇÕES DO SERVIDOR ---
 app.use(cors());
-app.use(bodyParser.json()); 
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(
+  session({
+    secret: "lasalle-secret-key",
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false }, // Em produção com HTTPS, mude para true
+  })
+);
+
 app.use(express.static("public"));
+
+// --- AUTENTICAÇÃO ---
+
+app.post("/login", (req, res) => {
+  const { username, password } = req.body;
+  if (username === "admin" && password === "lasalle@abel") {
+    req.session.authenticated = true;
+    res.json({ status: "sucesso" });
+  } else {
+    res.status(401).json({ status: "erro", message: "Credenciais inválidas" });
+  }
+});
+
+app.get("/admin", (req, res) => {
+  if (req.session.authenticated) {
+    res.sendFile(path.join(__dirname, "private", "admin.html"));
+  } else {
+    res.redirect("/login.html");
+  }
+});
+
+app.get("/logout", (req, res) => {
+  req.session.destroy();
+  res.redirect("/login.html");
+});
 
 // Configuração do Multer (é a ferramenta que faz o upload do video)
 const storage = multer.diskStorage({
@@ -43,7 +79,6 @@ app.post("/api/upload", upload.single("video"), (req, res) => {
 app.get("/api/videos", (req, res) => {
   const videoDir = path.join(__dirname, "public", "videos");
 
-  
   if (!fs.existsSync(videoDir)) return res.json([]);
 
   fs.readdir(videoDir, (err, files) => {

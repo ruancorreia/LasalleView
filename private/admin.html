@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Gestão de Vídeos</title>
+    <style>
+      body {
+        font-family: "Segoe UI", sans-serif;
+        background: #f4f6f8;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      /* Estilos dos Cards */
+      .card {
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        margin-bottom: 20px;
+      }
+      h2 {
+        margin-top: 0;
+        color: #333;
+      }
+
+      /* Parte do Upload */
+      .upload-area {
+        border: 2px dashed #cbd5e0;
+        padding: 20px;
+        text-align: center;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .upload-area:hover {
+        background: #f0f7ff;
+        border-color: #007bff;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 12px;
+        border-bottom: 1px solid #eee;
+      }
+      th {
+        background-color: #f8f9fa;
+        color: #555;
+      }
+
+      /* Aqui fica a estilização dos botões */
+      button {
+        cursor: pointer;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 5px;
+        font-weight: bold;
+        transition: 0.2s;
+      }
+      .btn-upload {
+        background: #007bff;
+        color: white;
+        width: 100%;
+        margin-top: 10px;
+        padding: 12px;
+      }
+      .btn-upload:hover {
+        background: #0056b3;
+      }
+
+      .btn-delete {
+        background: #ffebee;
+        color: #c62828;
+      }
+      .btn-delete:hover {
+        background: #ffcdd2;
+      }
+
+      .btn-rename {
+        background: #e3f2fd;
+        color: #1565c0;
+        margin-right: 5px;
+      }
+      .btn-rename:hover {
+        background: #bbdefb;
+      }
+
+      input.edit-name {
+        padding: 5px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        width: 200px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      style="
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      "
+    >
+      <h1 style="margin: 0; color: #333">TV Lasalle</h1>
+      <a
+        href="/logout"
+        style="
+          text-decoration: none;
+          background-color: #dc3545;
+          color: white;
+          padding: 8px 16px;
+          border-radius: 4px;
+          font-weight: bold;
+        "
+        >Sair</a
+      >
+    </div>
+
+    <div class="card">
+      <h2>Adicionar Vídeos</h2>
+      <div
+        class="upload-area"
+        onclick="document.getElementById('videoInput').click()"
+      >
+        <input
+          type="file"
+          id="videoInput"
+          accept="video/mp4,video/webm"
+          style="display: none"
+          onchange="mostrarNomeArquivo()"
+        />
+        <p id="fileNameDisplay">📂 Clique aqui para selecionar um vídeo</p>
+      </div>
+      <button class="btn-upload" onclick="enviarVideo()" id="btnEnviar">
+        Fazer Upload
+      </button>
+      <p id="statusUpload"></p>
+    </div>
+
+    <div class="card">
+      <h2>Vídeos</h2>
+      <p style="font-size: 0.9em; color: #666">
+        A ordem de reprodução segue a ordem alfabética.
+      </p>
+      <table id="tabelaVideos">
+        <thead>
+          <tr>
+            <th>Nome do Arquivo</th>
+            <th style="width: 150px">Ações</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <script>
+      // --- FUNÇÕES DE UPLOAD (mostrar nome, upload do video, etc)---
+      function mostrarNomeArquivo() {
+        const input = document.getElementById("videoInput");
+        if (input.files.length > 0) {
+          document.getElementById("fileNameDisplay").textContent =
+            "Selecionado: " + input.files[0].name;
+        }
+      }
+
+      async function enviarVideo() {
+        const input = document.getElementById("videoInput");
+        if (input.files.length === 0) return alert("Selecione um vídeo!");
+
+        const btn = document.getElementById("btnEnviar");
+        btn.disabled = true;
+        btn.textContent = "Enviando...";
+
+        const formData = new FormData();
+        formData.append("video", input.files[0]);
+
+        try {
+          await fetch("/api/upload", { method: "POST", body: formData });
+          document.getElementById("statusUpload").textContent = "✅ Sucesso!";
+          carregarLista();
+        } catch (e) {
+          alert("Erro no upload");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Fazer Upload";
+          input.value = "";
+          document.getElementById("fileNameDisplay").textContent =
+            "Clique aqui para selecionar um vídeo";
+        }
+      }
+
+      // --- CRUD (LISTAR, RENOMEAR, EXCLUIR) ---
+
+      async function carregarLista() {
+        const tbody = document.querySelector("#tabelaVideos tbody");
+        tbody.innerHTML = "<tr><td>Carregando...</td></tr>";
+
+        try {
+          const res = await fetch("/api/videos");
+          const videos = await res.json();
+
+          tbody.innerHTML = ""; // Limpa
+
+          if (videos.length === 0) {
+            tbody.innerHTML =
+              '<tr><td colspan="2">Nenhum vídeo encontrado.</td></tr>';
+            return;
+          }
+
+          videos.forEach((video) => {
+            const tr = document.createElement("tr");
+
+            tr.innerHTML = `
+                        <td>
+                            <span id="label-${video}">${video}</span>
+                            <input type="text" id="input-${video}" value="${video}" class="edit-name" style="display:none;">
+                        </td>
+                        <td>
+                            <button class="btn-rename" onclick="alternarEdicao('${video}')" id="btn-edit-${video}">✏️</button>
+                            <button class="btn-save" onclick="salvarNome('${video}')" id="btn-save-${video}" style="display:none;">💾</button>
+                            <button class="btn-delete" onclick="excluirVideo('${video}')">🗑️</button>
+                        </td>
+                    `;
+            tbody.appendChild(tr);
+          });
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      // aqui eu edito o nome do video
+      function alternarEdicao(nomeAtual) {
+        document.getElementById(`label-${nomeAtual}`).style.display = "none";
+        document.getElementById(`input-${nomeAtual}`).style.display =
+          "inline-block";
+        document.getElementById(`btn-edit-${nomeAtual}`).style.display = "none";
+        document.getElementById(`btn-save-${nomeAtual}`).style.display =
+          "inline-block";
+      }
+
+      async function salvarNome(nomeVelho) {
+        const novoNome = document.getElementById(`input-${nomeVelho}`).value;
+        if (!novoNome) return alert("O nome não pode ser vazio");
+
+        try {
+          const res = await fetch(`/api/videos/${nomeVelho}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ newName: novoNome }),
+          });
+
+          if (res.ok) {
+            carregarLista();
+          } else {
+            alert("Erro ao renomear. Verifique se o nome é válido.");
+          }
+        } catch (e) {
+          alert("Erro de conexão");
+        }
+      }
+
+      async function excluirVideo(nome) {
+        if (!confirm(`Tem a certeza que deseja excluir "${nome}"?`)) return;
+
+        try {
+          const res = await fetch(`/api/videos/${nome}`, { method: "DELETE" });
+          if (res.ok) {
+            carregarLista();
+          } else {
+            alert("Erro ao excluir.");
+          }
+        } catch (e) {
+          alert("Erro de conexão");
+        }
+      }
+
+      // Carrega a lista ao abrir a página
+      carregarLista();
+    </script>
+  </body>
+</html>
